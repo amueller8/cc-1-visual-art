@@ -6,6 +6,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import requests
 from bs4 import BeautifulSoup as bs
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
 
 
 #set environment variables https://phoenixnap.com/kb/set-environment-variable-mac
@@ -73,36 +74,69 @@ def get_playlist_track_info(sp, uri):
 
         #markov chain of probabilities of 
 
-#genius scraping and beautiful soup from https://medium.com/swlh/how-to-leverage-spotify-api-genius-lyrics-for-data-science-tasks-in-python-c36cdfb55cf3
-def scrape_genius_lyrics(artistname, song):
-    artistname = artistname[0]
-    #print(artistname)
-    artistNameNoSpace = str(artistname.replace(' ','-')) if ' 'in artistname else str(artistname)
-    songNameNoSpace = str(song.replace(' ','-')) if ' 'in song else str(song)
-    page = requests.get('https://genius.com/'+ artistNameNoSpace + '-' + songNameNoSpace + '-' + 'lyrics')
-    #print('https://genius.com/'+ artistNameNoSpace + '-' + songNameNoSpace + '-' + 'lyrics')
-    html = bs(page.text, 'html.parser')
-    lyrics1 = html.find("div", class_="lyrics")
-    #print(lyrics1)
-    lyrics2 = html.find("div", class_="Lyrics__Container-sc-1ynbvzw-6 YYrds")
-    if lyrics1:
-        lyrics = lyrics1.get_text()
-    elif lyrics2:
-        lyrics = lyrics2.get_text()
-    elif lyrics1 == lyrics2 == None:
-        lyrics = None
-    return lyrics
 
-def attachLyricsToFrame(df,artistname ):
-    #print(df)
-    for i, title in enumerate(df["name"]):
+#genius scraping
+def scrape_lyrics(artist, song):
+    if len(artist) == 1:
+        artist = artist[0]
+        #print(artistname)
+        artistNameNoSpace = str(artist.replace(' ','-')) if ' 'in artist else str(artist)
+        songNameNoSpace = str(song.replace(' ','-')) if ' 'in song else str(song)
+        page = requests.get('https://genius.com/'+ artistNameNoSpace + '-' + songNameNoSpace + '-' + 'lyrics')
+        #print('https://genius.com/'+ artistNameNoSpace + '-' + songNameNoSpace + '-' + 'lyrics')
+        html = bs(page.text, 'html.parser')
+        lyrics1 = html.find("div", class_="lyrics")
+        lyrics2 = html.find("div", class_="Lyrics__Container-sc-1ynbvzw-6 YYrds")
+        if lyrics1:
+            lyrics = lyrics1.get_text()[:300]
+        elif lyrics2:
+            lyrics = lyrics2.get_text()[:300]
+        elif lyrics1 == lyrics2 == None:
+            lyrics = None
+        return lyrics
+    elif len(artist) > 1:
+        return song
+
+def attach_to_frame(df, artist,i):
+    row = df.iloc[i]
+    #print(i,row["name"],artist)
+    t = scrape_lyrics(artist, row["name"])
+    df.loc[i, 'lyrics'] = t
+    return df
+
+def sentiment_analysis(df):
+    sentences = df['lyrics'].values.tolist()
+    #list filter
+    #https://www.geeksforgeeks.org/python-remove-none-values-from-list/
+    #res = list(filter(lambda item: item is not None, sentences))
+ 
+    #print(sentences)
+    analyzer = SentimentIntensityAnalyzer()
+    for i, sent in enumerate(sentences):
+        if sent == None: #handle nonetype sentence for songs with no easily available lyric
+            continue
         
-        test = scrape_genius_lyrics(artistname, title)
-        df.loc[i, 'lyrics'] = test
+        #row = df.iloc[i]
+        pos = analyzer.polarity_scores(sent)['pos']
+        neg = analyzer.polarity_scores(sent)['neg']
+        df.loc[i, 'pos'] = pos
+        df.loc[i, 'neg'] = neg
+        #isna https://towardsdatascience.com/5-methods-to-check-for-nan-values-in-in-python-3f21ddd17eed
+        if (pos == 0.0 and neg == 0.0) or pd.isna(pos) or pd.isna(neg):
+            df.loc[i, 'pos_neg'] = 0.0
+        else:
+            df.loc[i, 'pos_neg'] = pos + neg
+        
+        #from vader
+        # https://github.com/cjhutto/vaderSentiment
+        
     
     return df
 
-
+def create_matrix(df):
+    return None
+    #will be by index in table
+    
 
 
 #1umwX5x9YfdOYZDWR5BjUO
@@ -114,27 +148,20 @@ def main():
 
     sp = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
     #print(scrape_genius_lyrics(["Eminem"], "Rap God"))
-    print("x")
     id = get_playlist_id()
     df1, offset = get_playlist_track_info(sp, id)
+
+    #print("lyrics",scrape_lyrics(["Lilyisthatyou"], "Party 22"))
+    for i,x in enumerate(df1["artist"]):
+        df1 = attach_to_frame(df1, x, i)
+        #print(i,x)
+        #print(str(i) + ":", df1)
+  
+    df1 = sentiment_analysis(df1)
     #print(df1)
-    #print(df1.keys())
-    finalDf = None
-    for x in range(offset):
-        row = df1.iloc[x]
-        newDf = attachLyricsToFrame(df1, row["artist"])
-        if x == offset - 1:
-            finalDf = newDf
-    
-    print(finalDf)
+    print("posneg",df1['pos_neg'])
     
     
-        
-        #attachLyricsToFrame(df1, )
-
-        
-    
-
 
 if __name__ == "__main__":
     main()
