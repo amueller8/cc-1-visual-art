@@ -2,11 +2,13 @@
 Abby Mueller
 """
 import pandas as pd
+import numpy as np
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import requests
 from bs4 import BeautifulSoup as bs
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
+import math
 
 
 #set environment variables https://phoenixnap.com/kb/set-environment-variable-mac
@@ -113,33 +115,170 @@ def sentiment_analysis(df):
     #print(sentences)
     analyzer = SentimentIntensityAnalyzer()
     for i, sent in enumerate(sentences):
-        if sent == None: #handle nonetype sentence for songs with no easily available lyric
+        if sent == None or sent == "nan" or pd.isna(sent): #handle nonetype sentence for songs with no easily available lyric
+            df.loc[i, 'pos'] = 0.0
             continue
         
         #row = df.iloc[i]
+        print(sent)
+        print(analyzer.polarity_scores(sent))
         pos = analyzer.polarity_scores(sent)['pos']
-        neg = analyzer.polarity_scores(sent)['neg']
+        #neg = analyzer.polarity_scores(sent)['neg']
         df.loc[i, 'pos'] = pos
-        df.loc[i, 'neg'] = neg
-        #isna https://towardsdatascience.com/5-methods-to-check-for-nan-values-in-in-python-3f21ddd17eed
-        if (pos == 0.0 and neg == 0.0) or pd.isna(pos) or pd.isna(neg):
-            df.loc[i, 'pos_neg'] = 0.0
-        else:
-            df.loc[i, 'pos_neg'] = pos + neg
         
+        #isna https://towardsdatascience.com/5-methods-to-check-for-nan-values-in-in-python-3f21ddd17eed
+    
         #from vader
         # https://github.com/cjhutto/vaderSentiment
         
     
     return df
 
+def fix_nan(flt):
+    return 0.0 if pd.isna(flt) else flt
+
 def create_matrix(df):
+    positivities = df['pos'].values.tolist()
+    sum_diff = 0
+    sum_diffs = []
+    differences = {}
+    i = 0
+    for val in df['pos']:
+        differences[i] = {}
+        sum_diff_list = []
+        val = fix_nan(val)
+        j = 0
+        for val2 in df['pos']:
+            val2 = fix_nan(val2)
+            diff = math.exp(abs(val-val2))
+            differences[i][j] = diff
+            print(diff,"diff")
+            sum_diff += diff
+            sum_diff_list.append(diff)
+            j += 1
+        i += 1 #increment
+        sum_diffs.append(sum_diff_list)
+    print("sumdiffs", sum_diffs)
+    #print("sum----",sum_diff)
+    #print(differences)
+
+    matrix = {}
+    for k, v in differences.items():
+        #print(k,v)
+        matrix[k] = {}
+        print("sum_diffs k", sum(sum_diffs[k]), "\n")
+        for k2, v2 in v.items():
+            #print("v[k],v2", v[k], v2)
+            diff = v[k] - v2
+            num = math.exp(abs(diff))
+            #print(diff, num)
+            
+            percent = num / sum(sum_diffs[k])
+            matrix[k][k2] = percent
+        #print(k)
+        print("totalsum" , sum((sum_diffs[k])))
+        print(sum(matrix[k].values()))
+    print(matrix)
+
     return None
     #will be by index in table
+
+def create_differences(df_col): 
+    differences = {}
+    
+    r = 0 #row index
+    c = 0 #column index
+    while r < len(df_col.keys()): 
+        differences[r] = {}
+        row = differences[r]
+        val = fix_nan(df_col[r])
+        #print(r, val)
+        
+        while c < len(df_col.keys()):
+            #if r not in differences:
+                #differences[r] = {}
+            #row = differences[r]
+            val2 = fix_nan(df_col[c])
+            diff = math.exp(abs(val - val2))
+            row[c] = diff
+            #print("diff",diff)
+            c += 1
+            #print(row)
+        c = 0
+        r += 1
+       
+    #print(differences)
+    return differences
+    
+def differences_to_markov(differences):
+    for i,d in enumerate(differences):
+        reference = differences[i][i]
+        sum1= sum(differences[i].values())
+        print("Sum is", sum1)
+        for j, di in enumerate(differences):
+            diff = math.exp(abs(reference - differences[i][j]))
+            print("ref, di", reference, di)
+            print("curr diff is ", diff)
+            new_scaled_dif = diff / sum1
+            print("scaled is ", new_scaled_dif)
+            differences[i][j] = new_scaled_dif
+    
+    return differences
+    
+    
+
+
+class SongMarkov:
+    def __init__(self, transition_matrix):
+        self.transition_matrix = transition_matrix
+        self.indices = list(transition_matrix.keys())
+    
+    def get_next_song(self, curr_song):
+        return np.random.choice(
+            self.indices, 
+            p=[self.transition_matrix[curr_song][next_index] for next_index in self.indices]
+        )
+    
+    def create_transitions(self, current_note, len_param=4):
+        songs = []
+        while len(songs) < len_param:
+            next_note = self.get_next_note(current_note)
+            songs.append(next_note) #don't need to set melody equal to this
+        
+        return songs
+
+
+    
+
+def matrix_2(df_col):
+    differences = create_differences(df_col)
+    d = differences_to_markov(differences)
+    print("d", "\n",d)
+    print(sum(d[0].values()))
+
+    return d
+
+    #create art
+   
+    #choose a random number through len of things 
+   
+    #
+
+    
+
+
+        
+
+         
     
 
 
 #1umwX5x9YfdOYZDWR5BjUO
+
+#short
+#4V2lefCcuGNzHe0hjvMx1m
+
+
 #playlist iteration from https://github.com/plamere/spotipy/blob/master/examples/playlist_tracks.py 
 
 
@@ -150,6 +289,7 @@ def main():
     #print(scrape_genius_lyrics(["Eminem"], "Rap God"))
     id = get_playlist_id()
     df1, offset = get_playlist_track_info(sp, id)
+    print(df1)
 
     #print("lyrics",scrape_lyrics(["Lilyisthatyou"], "Party 22"))
     for i,x in enumerate(df1["artist"]):
@@ -158,8 +298,25 @@ def main():
         #print(str(i) + ":", df1)
   
     df1 = sentiment_analysis(df1)
+    print(df1)
     #print(df1)
-    print("posneg",df1['pos_neg'])
+    df_pos = df1['pos']
+    #create_differences(df_pos)
+
+    d=matrix_2(df1['pos'])
+
+    print(df1['pos'].sum())
+
+    transition = SongMarkov(d)
+    print(transition.transition_matrix)
+    print(transition.indices)
+
+    print(transition.get_next_song(0))
+    
+  
+    #print("pos", df1['pos'])
+    #create_matrix(df1)
+   
     
     
 
