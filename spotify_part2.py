@@ -1,15 +1,18 @@
 """
 Abby Mueller
 """
+
 import pandas as pd
 import numpy as np
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-import requests
-from bs4 import BeautifulSoup as bs
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
-import math
-
+#import requests
+#from bs4 import BeautifulSoup as bs
+#from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
+from PIL import Image, ImageDraw, ImageFont
+import urllib.request
+from pathlib import Path #check if images exist or not
+import random
 
 #set environment variables https://phoenixnap.com/kb/set-environment-variable-mac
 class SongMarkov:
@@ -126,6 +129,19 @@ def create_matrix(df):
 
     return differences
 
+
+def get_image(sp,artist_name):
+    image = ""
+    
+    name = artist_name
+    results = sp.search(q='artist:' + name, type='artist')
+    items = results['artists']['items']
+    if len(items) > 0:
+        artist = items[0]
+        image = artist['images'][0]['url']
+    
+    return image
+
 #1umwX5x9YfdOYZDWR5BjUO
 
 #short
@@ -148,9 +164,64 @@ def main():
     transitioner = SongMarkov(matrix)
     print(transitioner.transition_matrix)
     print(transitioner.indices)
+    first_song = np.random.choice(transitioner.indices)
 
     print(transitioner.get_next_song(0))
-    print(transitioner.create_transitions(0))
+        
+    order = transitioner.create_transitions(first_song, 12)
+
+    
+    images = {}
+    for i in order:
+        images[i] = get_image(sp, df1["artist"][i][0] )
+    print(images)
+
+    #image = Image.open("base.jpg")
+    curr_path = Path(__file__).parent.resolve()
+    for key, value in images.items():
+        #path https://stackoverflow.com/questions/3430372/how-do-i-get-the-full-path-of-the-current-files-directory
+        #to save stuff into file 
+        full_path = str(curr_path) + "/images/" + str(key) + ".jpg"
+        urllib.request.urlretrieve(value, full_path)
+       
+    #now, for each image
+    with Image.open(str(curr_path) + "/base.jpg") as background:
+        for i in (order):
+            print(str(i))
+            img = Image.open(str(curr_path) + "/images/"  + str(i) + ".jpg")
+            img = img.convert("RGBA")
+            #rgba color replacement
+            #https://stackoverflow.com/questions/3752476/python-pil-replace-a-single-rgba-color 
+            data = np.array(img)
+            r, g, b, a = data.T
+            alpha = random.randint(0, 200)
+            
+            white_areas = (r == 255) & (b == 255) & (g == 255) & (a == alpha)
+            data[..., :-1][white_areas.T] = (random.randint(0,255), random.randint(0,255), random.randint(0,255))
+            img = Image.fromarray(data)
+            img.putalpha(alpha)
+            
+            paste_location_x = random.randint(-200,200) #base is 750 px
+            paste_location_y= random.randint(-200,200)
+            img = img.rotate(random.randint(0, 360))
+
+            background.paste(img, (paste_location_x,paste_location_y), img)
+            temp = background.save(str(curr_path) + "/images/final.jpg")
+            #background.show()
+
+    plist = sp.playlist(id)
+    print(plist['name'])
+    
+    k = Image.open(str(curr_path) + "/images/final.jpg")
+    txt = ImageDraw.Draw(k)
+    
+    txt.text((100, 100), plist['name'],fill = (255,0,0))
+    #txt.text((100, -100), plist['name'], fill =(255,255,255))
+   
+    k.show()
+    k.save(str(curr_path) + "/images/final.jpg")
+    
+
 
     
     
