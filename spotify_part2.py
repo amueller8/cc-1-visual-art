@@ -183,9 +183,12 @@ def main():
         #to save stuff into file 
         full_path = str(curr_path) + "/images/" + str(key) + ".jpg"
         urllib.request.urlretrieve(value, full_path)
-       
+    
+    new_base = Image.open(str(curr_path) + "/images/" + str(order[0]) + ".jpg")
+
     #now, for each image
-    with Image.open(str(curr_path) + "/base.jpg") as background:
+    #with Image.open(str(curr_path) + "/base.jpg") as background:
+    with new_base as background:
         for i in (order):
             print(str(i))
             img = Image.open(str(curr_path) + "/images/"  + str(i) + ".jpg")
