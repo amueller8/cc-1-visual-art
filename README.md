@@ -57,7 +57,8 @@ I'm a huge fan of Spotify and listening to music, so it was really fun to incorp
 If I have time or can wrap my head around what was happening with floating-point stuff, I would love to return to my original idea which was using sentiment analysis of the lyrics of each song to determine how positive each song in the playlist is, then generating art that revolves around that. I think it would be interesting to juxtapose a playlist, which evokes a mood in a human listener, with a computer's modelled notion of what that emotional experience might be.
 </li>
 
-</ul>
+</ul> </br>
+
 ### Do I think this system is creative? How or how not?
 I think that this system isn't entirely creative but is getting there. 
 It definitely introduces ideas of randomness based on resources provided to it, but randomness alone does not equal creativity.
@@ -67,9 +68,9 @@ Specifically, one aspect of a computationally creative system we discussed in cl
 
 Some sources I consulted were:
 https://medium.com/swlh/how-to-leverage-spotify-api-genius-lyrics-for-data-science-tasks-in-python-c36cdfb55cf3   </br>
-I did not end up using web scraping but this was really helpful in orienting myself with Spotipy specifically (although I branched out to the Spotipy documentation for playlist-specific workings) as well as how I would turn Spotipy info into a dataframe with pandas, because I had no knowledge of pandas prior.
+I did not end up using web scraping but this was really helpful in orienting myself with Spotipy specifically (although I branched out to the Spotipy documentation for playlist-specific workings) as well as how I would turn Spotipy info into a dataframe with pandas, because I had no knowledge of pandas prior. </br>
 
-Knowledge on setting the environment variables (like the CLIENT SECRET) was guided by https://phoenixnap.com/kb/set-environment-variable-mac, because I didn't want to hard-code in the client ID and secret (that's bad practice). 
+Knowledge on setting the environment variables (like the CLIENT SECRET) was guided by https://phoenixnap.com/kb/set-environment-variable-mac, because I didn't want to hard-code in the client ID and secret (that's bad practice). </br>
 Playlist iteration inspiration came from the Spotipy documentation/examples hosted on github: https://github.com/plamere/spotipy/blob/master/examples/playlist_tracks.py  
 
 I also referred to a few stackoverflow threads:
