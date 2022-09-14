@@ -44,9 +44,8 @@ class SongMarkov:
         songs = []
         while len(songs) < len_param:
             next_song= self.get_next_song(current_song)
-            songs.append(next_song) #don't need to set melody equal to this
-        
-        #print("THe songs!!")
+            songs.append(next_song) 
+    
         return songs
 
     
@@ -127,13 +126,11 @@ def create_matrix(df):
     #get lengths of each song title, total up
     total_length = 0
     for song in df["name"]:
-        print(len(song))
         total_length += len(song)
     
     differences = {}
 
     for i in range(len(df["name"])):
-        print(i, "\n")
         differences[i] = {}
         for j, song in enumerate(df["name"]):
             differences[i][j] = len(song) / total_length
@@ -188,8 +185,6 @@ def create_image_art(sp, df1, id, order):
     images = {}
     for i in order:
         images[i] = get_image(sp, df1["artist"][i][0] )
-    print(images)
-
     #current path info stuff came from
     #https://stackoverflow.com/questions/3430372/how-do-i-get-the-full-path-of-the-current-files-directory
      
@@ -199,10 +194,10 @@ def create_image_art(sp, df1, id, order):
         full_path = str(curr_path) + "/images/" + str(key) + ".jpg"
         urllib.request.urlretrieve(value, full_path)
     
+    plist = sp.playlist(id) #for generated image naming 
     new_base = Image.open(str(curr_path) + "/images/" + str(order[0]) + ".jpg")
     with new_base as background:
         for i in (order):
-            print(str(i))
             img = Image.open(str(curr_path) + "/images/"  + str(i) + ".jpg")
             img = img.convert("RGBA")
             #rgba color replacement
@@ -221,14 +216,13 @@ def create_image_art(sp, df1, id, order):
             img = img.rotate(random.randint(0, 360))
 
             background.paste(img, (paste_location_x,paste_location_y), img)
-            temp = background.save(str(curr_path) + "/images/final.jpg")
+            temp = background.save(str(curr_path) + "/images/" + str(plist['name']) + ".jpg")
 
     #in this section we draw the playlist name onto the image
     #could probably have been separate function but alas
     plist = sp.playlist(id)
-    print(plist['name'])
     
-    k = Image.open(str(curr_path) + "/images/final.jpg")
+    k = Image.open(str(curr_path) + "/images/" + str(plist['name']) + ".jpg")
     txt = ImageDraw.Draw(k)
     
     #caveat: this works for Mac computers, for windows we would need to do "arial.tff" or somethine else
@@ -237,7 +231,7 @@ def create_image_art(sp, df1, id, order):
    
     k.show() #for demo purposes 
     #update and save
-    k.save(str(curr_path) + "/images/final.jpg")
+    k.save(str(curr_path) + "/images/" + str(plist['name']) + ".jpg")
 
 def main():
     """
